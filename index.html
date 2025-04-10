@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Booklet Maker</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📘 PDF Booklet Creator</h1>
+        <form method="post" enctype="multipart/form-data">
+            <label for="pdf">Choose a PDF:</label>
+            <input type="file" name="pdf" required><br>
+
+            <label for="pages">Pages to include:</label>
+            <input type="number" name="pages" min="1" value="8" required><br>
+
+            <button type="submit">Create Booklet</button>
+        </form>
+    </div>
+</body>
+</html>
