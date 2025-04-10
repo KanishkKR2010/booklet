@@ -84,9 +84,10 @@ def index():
 
                 return send_file(output_path, as_attachment=True, download_name=f'{base_name}_booklet.pdf')
 
-        except Exception as e:
-            print("❌ Failed to create booklet:", e)
-            return f"<h2>❌ Failed to create booklet: {e}</h2>"
+       except Exception as e:
+            error_details = traceback.format_exc()
+            print("❌ Failed to create booklet:", error_details)
+            return f"<h2>❌ Failed to create booklet:</h2><pre>{error_details}</pre>"
 
     return render_template('index.html')
 
