@@ -1,5 +1,5 @@
 import os
-import fitz
+import fitz  # PyMuPDF
 from flask import Flask, request, send_file, render_template
 from werkzeug.utils import secure_filename
 
@@ -7,12 +7,14 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
-def create_booklet(input_path, output_path, max_pages=8):
+def create_booklet(input_path, output_path, from_page=1, to_page=None):
     doc = fitz.open(input_path)
-    page_count = min(max_pages, len(doc))
-    pages = [doc.load_page(i) for i in range(page_count)]
+    to_page = min(to_page or len(doc), len(doc))
+    from_page = max(1, from_page)
 
+    pages = [doc.load_page(i) for i in range(from_page - 1, to_page)]
+
+    # Create blank page to pad
     width = doc[0].rect.width
     height = doc[0].rect.height
     blank_pdf = fitz.open()
@@ -37,29 +39,55 @@ def create_booklet(input_path, output_path, max_pages=8):
 
     output = fitz.open()
     a4_rect = fitz.paper_rect("a4")
+    half_width = a4_rect.height / 2
+    full_height = a4_rect.width
 
-    for p1, p2 in order:
+    for i, (p1, p2) in enumerate(order):
         new_page = output.new_page(width=a4_rect.height, height=a4_rect.width)
-        new_page.show_pdf_page(fitz.Rect(0, 0, a4_rect.height / 2, a4_rect.width), p1.parent, p1.number)
-        new_page.show_pdf_page(fitz.Rect(a4_rect.height / 2, 0, a4_rect.height, a4_rect.width), p2.parent, p2.number)
+        is_back = i % 2 == 1
+
+        # Left side
+        new_page.show_pdf_page(
+            fitz.Rect(0, 0, half_width, full_height),
+            p1.parent,
+            p1.number,
+            rotate=180 if is_back else 0
+        )
+
+        # Right side
+        new_page.show_pdf_page(
+            fitz.Rect(half_width, 0, a4_rect.height, full_height),
+            p2.parent,
+            p2.number,
+            rotate=180 if is_back else 0
+        )
 
     output.save(output_path)
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        file = request.files['pdf']
-        pages = int(request.form['pages'])
-        if file:
-            filename = secure_filename(file.filename)
-            input_path = os.path.join(UPLOAD_FOLDER, filename)
-            output_path = os.path.join(UPLOAD_FOLDER, 'booklet_' + filename)
-            file.save(input_path)
-            create_booklet(input_path, output_path, max_pages=pages)
-            return send_file(output_path, as_attachment=True)
-    return render_template('index.html')
+        try:
+            file = request.files['pdf']
+            from_page = int(request.form['from_page'])
+            to_page = int(request.form['to_page'])
 
+            if file:
+                filename = secure_filename(file.filename)
+                input_path = os.path.join(UPLOAD_FOLDER, filename)
+                base_name = os.path.splitext(filename)[0]
+                output_path = os.path.join(UPLOAD_FOLDER, base_name + '_booklet.pdf')
+                file.save(input_path)
+
+                create_booklet(input_path, output_path, from_page=from_page, to_page=to_page)
+
+                return send_file(output_path, as_attachment=True, download_name=f'{base_name}_booklet.pdf')
+
+        except Exception as e:
+            print("❌ Failed to create booklet:", e)
+            return f"<h2>❌ Failed to create booklet: {e}</h2>"
+
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
