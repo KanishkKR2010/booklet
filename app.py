@@ -14,6 +14,7 @@ def create_booklet(input_path, output_path, from_page=1, to_page=None):
 
     pages = [doc.load_page(i) for i in range(from_page - 1, to_page)]
 
+    # Create blank page to pad
     width = doc[0].rect.width
     height = doc[0].rect.height
     blank_pdf = fitz.open()
@@ -43,16 +44,14 @@ def create_booklet(input_path, output_path, from_page=1, to_page=None):
 
     for i, (p1, p2) in enumerate(order):
         new_page = output.new_page(width=a4_rect.height, height=a4_rect.width)
-
-        # Flip every second spread
-        rotate = 180 if i % 2 == 1 else 0
+        is_back = i % 2 == 1
 
         # Left side
         new_page.show_pdf_page(
             fitz.Rect(0, 0, half_width, full_height),
             p1.parent,
             p1.number,
-            rotate=rotate
+            rotate=180 if is_back else 0
         )
 
         # Right side
@@ -60,7 +59,7 @@ def create_booklet(input_path, output_path, from_page=1, to_page=None):
             fitz.Rect(half_width, 0, a4_rect.height, full_height),
             p2.parent,
             p2.number,
-            rotate=rotate
+            rotate=180 if is_back else 0
         )
 
     output.save(output_path)
